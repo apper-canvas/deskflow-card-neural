@@ -1,0 +1,74 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import 'react-toastify/dist/ReactToastify.css';
+
+/* Custom toast styles */
+.Toastify__toast-container {
+  @apply text-sm;
+}
+
+.Toastify__toast {
+  @apply rounded-lg shadow-lg;
+  min-height: 48px;
+}
+
+.Toastify__toast--success {
+  @apply bg-white border-l-4 border-success text-gray-800;
+}
+
+.Toastify__toast--error {
+  @apply bg-white border-l-4 border-error text-gray-800;
+}
+
+.Toastify__toast--info {
+  @apply bg-white border-l-4 border-info text-gray-800;
+}
+
+.Toastify__close-button {
+  @apply text-gray-400 hover:text-gray-600;
+}
+
+/* Base styles */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400;
+}
+
+/* Task completion animation */
+.task-completed {
+  @apply line-through opacity-60 transition-all duration-200 ease-out;
+}
+
+/* Input focus states */
+input:focus {
+  outline: none;
+  @apply ring-2 ring-primary ring-opacity-50;
+}
+
+/* Checkbox animation */
+.checkbox-animation {
+  @apply transition-all duration-150 ease-out;
+}
+
+.checkbox-animation:hover {
+  @apply scale-110;
+}
+
+.checkbox-animation:active {
+  @apply scale-95;
+}
