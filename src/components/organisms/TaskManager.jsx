@@ -1,82 +1,138 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useContext, useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
+import { useSelector } from "react-redux";
+import { AuthContext } from "../../App";
+import ApperIcon from "@/components/ApperIcon";
+import Button from "@/components/atoms/Button";
+import TaskCounter from "@/components/molecules/TaskCounter";
 import TaskInput from "@/components/molecules/TaskInput";
 import TaskItem from "@/components/molecules/TaskItem";
-import TaskCounter from "@/components/molecules/TaskCounter";
-import Button from "@/components/atoms/Button";
-import ApperIcon from "@/components/ApperIcon";
 import Empty from "@/components/ui/Empty";
+import Error from "@/components/ui/Error";
+import Loading from "@/components/ui/Loading";
+import { taskService } from "@/services/api/taskService";
 
 const TaskManager = () => {
-  const [tasks, setTasks] = useState([]);
+const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { logout } = useContext(AuthContext);
+  const { user } = useSelector((state) => state.user);
 
-  // Load tasks from localStorage on mount
+  // Load tasks from database on mount
   useEffect(() => {
-    const savedTasks = localStorage.getItem("deskflow-tasks");
-    if (savedTasks) {
-      try {
-        setTasks(JSON.parse(savedTasks));
-      } catch (error) {
-        console.error("Failed to load tasks:", error);
-      }
-    }
+    loadTasks();
   }, []);
 
-  // Save tasks to localStorage whenever tasks change
-  useEffect(() => {
-    localStorage.setItem("deskflow-tasks", JSON.stringify(tasks));
-  }, [tasks]);
-
-  const addTask = (text) => {
-    const newTask = {
-      id: Date.now().toString(),
-      text,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      completedAt: null
-    };
-    
-    setTasks(prev => [newTask, ...prev]);
-    toast.success("Task added successfully!");
-  };
-
-  const toggleTaskComplete = (taskId) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        const isCompleting = !task.completed;
-        return {
-          ...task,
-          completed: isCompleting,
-          completedAt: isCompleting ? new Date().toISOString() : null
-        };
-      }
-      return task;
-    }));
-  };
-
-  const deleteTask = (taskId) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
-    toast.info("Task deleted");
-  };
-
-  const clearCompleted = () => {
-    const completedCount = tasks.filter(task => task.completed).length;
-    if (completedCount > 0) {
-      setTasks(prev => prev.filter(task => !task.completed));
-      toast.success(`${completedCount} completed task${completedCount === 1 ? '' : 's'} cleared`);
+  const loadTasks = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await taskService.getAll();
+      setTasks(result);
+    } catch (err) {
+      console.error("Error loading tasks:", err.message);
+      setError("Failed to load tasks. Please try again.");
+      toast.error("Failed to load tasks");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(task => task.completed).length;
+const addTask = async (text) => {
+    try {
+      const newTask = await taskService.create({
+        Name: text,
+        completed_c: false,
+        createdAt_c: new Date().toISOString(),
+        completedAt_c: null
+      });
+      setTasks(prev => [newTask, ...prev]);
+      toast.success("Task added successfully!");
+    } catch (err) {
+      console.error("Error adding task:", err.message);
+      toast.error("Failed to add task");
+    }
+  };
+
+  const toggleTaskComplete = async (taskId) => {
+    try {
+      const task = tasks.find(t => t.Id === taskId);
+      if (!task) return;
+      
+      const isCompleting = !task.completed_c;
+      const updatedTask = await taskService.update(taskId, {
+        completed_c: isCompleting,
+        completedAt_c: isCompleting ? new Date().toISOString() : null
+      });
+      
+      setTasks(prev => prev.map(t => 
+        t.Id === taskId ? updatedTask : t
+      ));
+    } catch (err) {
+      console.error("Error updating task:", err.message);
+      toast.error("Failed to update task");
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    try {
+      await taskService.delete(taskId);
+      setTasks(prev => prev.filter(task => task.Id !== taskId));
+      toast.info("Task deleted");
+    } catch (err) {
+      console.error("Error deleting task:", err.message);
+      toast.error("Failed to delete task");
+    }
+  };
+
+  const clearCompleted = async () => {
+    try {
+      const completedCount = await taskService.clearCompleted();
+      if (completedCount > 0) {
+        setTasks(prev => prev.filter(task => !task.completed_c));
+        toast.success(`${completedCount} completed task${completedCount === 1 ? '' : 's'} cleared`);
+      }
+    } catch (err) {
+      console.error("Error clearing completed tasks:", err.message);
+      toast.error("Failed to clear completed tasks");
+    }
+  };
+
+const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(task => task.completed_c).length;
   const hasCompletedTasks = completedTasks > 0;
 
-  return (
+  if (loading) {
+    return <Loading />;
+  }
+
+  if (error) {
+    return <Error title="Error Loading Tasks" message={error} onRetry={loadTasks} />;
+  }
+
+return (
     <div className="max-w-2xl mx-auto p-6">
-      {/* Header with Counter */}
+      {/* Header with Counter and Logout */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">DeskFlow</h1>
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex-1"></div>
+          <h1 className="text-4xl font-bold text-gray-900">DeskFlow</h1>
+          <div className="flex-1 flex justify-end">
+            <Button
+              variant="secondary"
+              onClick={logout}
+              className="text-sm"
+            >
+              <ApperIcon name="LogOut" size={16} className="mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+        {user && (
+          <p className="text-gray-600 mb-4">Welcome back, {user.firstName || user.name || 'User'}!</p>
+        )}
         <TaskCounter totalTasks={totalTasks} completedTasks={completedTasks} />
       </div>
 
@@ -96,8 +152,14 @@ const TaskManager = () => {
           <AnimatePresence>
             {tasks.map(task => (
               <TaskItem
-                key={task.id}
-                task={task}
+                key={task.Id}
+                task={{
+                  Id: task.Id,
+                  text: task.Name,
+                  completed: task.completed_c,
+                  createdAt: task.createdAt_c,
+                  completedAt: task.completedAt_c
+                }}
                 onToggleComplete={toggleTaskComplete}
                 onDeleteTask={deleteTask}
               />
@@ -125,6 +187,5 @@ const TaskManager = () => {
       )}
     </div>
   );
-};
-
+}
 export default TaskManager;
